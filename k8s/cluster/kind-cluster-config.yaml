@@ -1,0 +1,12 @@
+# Creating a cluster with custom configs
+# kind create cluster --config kind-example-config.yaml
+#
+# Let's create a cluster with one control-plane and 
+# three nodes.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
+  - role: worker

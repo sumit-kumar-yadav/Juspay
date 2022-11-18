@@ -1,0 +1,252 @@
+<html>
+<title>Pinger // Stats</title>
+
+<head>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+  <style>
+    table {
+      width: 950px;
+      border-collapse: collapse;
+      margin: 30px auto;
+    }
+
+    tr:nth-of-type(odd) {
+      background: #eee;
+    }
+
+    th {
+      background: #0a4770;
+      color: white;
+      font-weight: bold;
+    }
+
+    td,
+    th {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: left;
+      font-size: 18px;
+    }
+
+    @media only screen and (max-width: 760px),
+    (min-device-width: 768px) and (max-device-width: 1024px) {
+
+      table {
+        width: 100%;
+      }
+
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
+
+      thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+      }
+
+      tr {
+        border: 1px solid #ccc;
+      }
+
+      td {
+        border: none;
+        border-bottom: 1px solid #eee;
+        position: relative;
+        padding-left: 50%;
+      }
+
+      td:before {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        content: attr(data-column);
+        color: #000;
+        font-weight: bold;
+      }
+    }
+
+    .heading {
+      padding: 20px;
+      border-bottom: 1px solid #efefef;
+    }
+
+    form {
+      border-top: 1px solid #efefef;
+      width: 550px;
+      margin: 50px auto;
+      padding: 30px;
+    }
+
+    input {
+      width: 370px;
+      height: 35px;
+      font-weight: bold;
+      font-size: 16px;
+      padding: 5px;
+    }
+
+    .submit {
+      width: 160px;
+      font-family: monospace;
+      height: 35px;
+    }
+
+    #tablePlaceHolder {
+      text-align: center;
+    }
+
+    #notification {
+      text-align: center;
+
+
+    }
+  </style>
+</head>
+
+<body style='font-family: monospace;'>
+  <h1 class='heading'>
+    <center>🚨 Pinger // Statistics</center>
+  </h1>
+  <div id='tablePlaceHolder'>Loading...</div>
+  <div id='control'>
+    <form id='updateForm' action='#' onsubmit='updateUrl(); return false;'>
+      <p>Add a new URL, like <i>https://foo.bar/baz</i></p>
+      <input type='text' id='url' name='url'>
+      <input class='submit' type='submit' value='Submit'>
+    </form>
+    <div id='notification'></div>
+  </div>
+  <script>
+
+    const callApi = (url, data = {}, method = 'GET') => {
+      let payload = {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+      if (method == 'POST') {
+        payload['body'] = JSON.stringify(data);
+      }
+      return fetch(url, payload)
+        .then(res => res.json())
+        .then((result) => {
+          console.log(`Calling URL: ${url}`);
+          return result;
+        }, (error) => {
+          console.log(error);
+        })
+    }
+
+    setInterval(() => {
+      callApi('/ping/stats').then(data => {
+        renderTable(Object.values(data))
+      })
+    }, 3000);
+
+    const renderTable = (data) => {
+      const table = document.createElement('table');
+      const thead = table.appendChild(document.createElement('thead'));
+      const tr = thead.appendChild(document.createElement('tr'));
+      const columnTexts = Object.keys(data[0]);
+      columnTexts.forEach((columnText) => {
+        tr.appendChild(document.createElement('th'))
+          .textContent = columnText;
+      });
+      const tbody = table.appendChild(document.createElement('tbody'));
+      data.forEach((item) => {
+        const tr = tbody.appendChild(document.createElement('tr'));
+        const keys = Object.keys(item);
+        const values = Object.values(item);
+        values.forEach((value, index) => {
+          if (keys[index] === 'url') {
+            tr.appendChild(document.createElement('td')).innerHTML = `<a href='#' id='${btoa(value)}' onclick='urlInfo(this.id)'>${value}</a>`;
+          } else {
+            tr.appendChild(document.createElement('td')).textContent = value;
+          }
+        });
+      });
+      const placeholder = document.getElementById('tablePlaceHolder');
+
+      placeholder.innerHTML = '';
+      placeholder.appendChild(table);
+    }
+
+    const updateUrl = () => {
+      const url = document.getElementById('url').value;
+      let notification = document.getElementById('notification');
+      var res = url.match(/(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
+      if(res == null) {
+        notification.innerHTML = `
+            <span id='urlError' onclick='vanish(this.id)'>
+              ❌ Failed to update URL: ${url}
+            </span>`;
+            return false;
+      }
+      callApi('/ping/updateUrl', data = { 'url': url }, methood = 'POST').then(data => {
+        
+        if (Object.keys(data).length === 0) {
+          notification.innerHTML = `
+            <span id='urlError' onclick='vanish(this.id)'>
+              ❌ Failed to update URL: ${url}
+            </span>`;
+        }
+        else {
+          notification.innerHTML = `
+            <span id='urlSuccess' onclick='vanish(this.id)'>
+              ✔️ Updated URL: ${url}
+            </span>`;
+        }
+      });
+    }
+
+    const urlInfo = (id) => {
+      const url = atob(id);
+      const notification = document.getElementById('notification');
+      notification.innerHTML = 'Loading...';
+      callApi('/url/info', data = { 'url': url }, methood = 'POST').then(data => {
+        if (Object.keys(data).length === 0)
+          notification.innerHTML = `
+            <span id='detailsError' onclick='vanish(this.id)'>
+              ❌ Failed to get details: ${url}
+            </span>`;
+        else
+          notification.innerHTML = `
+          <table id='details' onclick='vanish(this.id)'>
+            <tr>
+              <td>url</td>
+              <td>${data.url}</td>
+            </tr>
+            <tr>
+              <td>statusCode</td>
+              <td>${data.status}</td>
+            </tr>
+            <tr>
+              <td>contentType</td>
+              <td>${data.contentType}</td>
+            </tr>
+            <tr>
+              <td>server</td>
+              <td>${data.server}</td>
+            </tr>
+          </table>`;
+      });
+    }
+
+    const vanish = (id) => {
+      document.getElementById(id).parentElement.innerHTML = '';
+    }
+
+  </script>
+</body>
+
+</html>

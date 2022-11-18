@@ -1,0 +1,197 @@
+# Sample reference for deployment yamls
+# This need not be one file, can be split into 
+# separate files.
+# Command to deploy:
+# kubectl apply -f <file/path> 
+# Deployment file for frontend service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: default
+  labels:
+    app: frontend
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: localhost/frontend:v1
+        env:
+        - name: PINGER_BASE_URL
+          value: "http://pinger-v1-service:3000"
+        - name: DETAILS_BASE_URL
+          value: "http://details-service:4000"
+        ports:
+        - containerPort: 9000
+        imagePullPolicy: IfNotPresent # else might try to pull images remotely always
+
+---
+# Service for frontend
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: frontend
+    version: v1
+  name: frontend-service
+  namespace: default
+spec:
+  ports:
+  - port: 9000
+    protocol: TCP
+    targetPort: 9000
+  selector:
+    app: frontend
+  sessionAffinity: None
+  type: ClusterIP
+---
+# Deployment for details service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: details
+  namespace: default
+  labels:
+    app: details
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: details
+  template:
+    metadata:
+      labels:
+        app: details
+    spec:
+      containers:
+      - name: details
+        image: localhost/details:v1
+        ports:
+        - containerPort: 4000
+        imagePullPolicy: IfNotPresent
+---
+# Service for details
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: details
+    version: v1
+  name: details-service
+  namespace: default
+spec:
+  ports:
+  - port: 4000
+    protocol: TCP
+    targetPort: 4000
+  selector:
+    app: details
+  sessionAffinity: None
+  type: ClusterIP
+---
+# Deployment for pinger app v1
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pinger-v1
+  namespace: default
+  labels:
+    app: pinger
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pinger
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: pinger
+        version: v1
+    spec:
+      containers:
+      - name: pinger
+        image: localhost/pinger:v1
+        ports:
+        - containerPort: 3000
+        imagePullPolicy: IfNotPresent
+---
+# Service for pinger app v1
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: pinger
+    version: v1
+  name: pinger-v1-service
+  namespace: default
+spec:
+  ports:
+  - port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: pinger
+    version: v1
+  sessionAffinity: None
+  type: ClusterIP
+---
+# Deployment for pinger app v2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pinger-v2
+  namespace: default
+  labels:
+    app: pinger
+    version: v2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pinger
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: pinger
+        version: v2
+    spec:
+      containers:
+      - name: pinger
+        image: localhost/pinger:v2
+        ports:
+        - containerPort: 3000
+        imagePullPolicy: IfNotPresent
+---
+# Service for ping app v2
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: pinger
+    version: v2
+  name: pinger-v2-service
+  namespace: default
+spec:
+  ports:
+  - port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: pinger
+    version: v2
+  sessionAffinity: None
+  type: ClusterIP
+---
